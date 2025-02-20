@@ -1,0 +1,175 @@
+---
+title: "Homework 3"
+author: "Iman Malik"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE, 
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.align = "center")
+```
+
+```{r}
+# Libraries
+library(ggplot2)
+library(tidyverse)
+library(mosaic)
+```
+
+UT EID: im22856
+
+GitHub repo: <https://github.com/imanmalik16/SDS-315.git>
+
+## Problem 1 - Iron Bank
+
+```{r}
+sim_trades <- do(100000) * nflip(n = 2021, prob = 0.024)
+
+ggplot(sim_trades) + 
+  geom_histogram(aes(x = nflip), fill = 'pink3', color = 'black', binwidth = 1) +
+  labs(
+    title = "Probability Distribution",
+    x = "Flagged Trades",
+    y = "Frequency"
+  )
+
+pvalue1 <- sum(sim_trades >= 70) / 100000
+```
+
+The null hypothesis we are testing is that over the long run, securities trades from the Iron Bank are flagged at the same 2.4% baseline rate as that of other traders. Our observed test statistic is 70 flagged trades out of 2021 securities trades from the Iron Bank. Our p-value is 0.002. Due to this very small p-value (0.002 \< 0.05), we reject the null hypothesis, and there is a small likelihood of the deviations occurring by chance. There is convincing evidence that the actual flagging rate on securities trades is higher than the expected 2.4%. Therefore, further investigation into the trades of the Iron Bank is necessary.
+
+## Problem 2 - Health Inspections
+
+```{r}
+sim_violations <- do(100000) * nflip(n = 50, prob = 0.03)
+
+ggplot(sim_violations) + 
+  geom_histogram(aes(x = nflip), fill = 'cyan3', color = 'black', binwidth = 1) +
+  labs(
+    title = "Probability Distribution",
+    x = "Health Code Violations",
+    y = "Frequency"
+  )
+
+pvalue2 <- sum(sim_violations >= 8) / 100000
+```
+
+The null hypothesis we are testing is that on average, restaurants in the city are cited for health code violations at the same 3% baseline rate. Our observed test statistic is 8 reported health code violations out of 50 inspections for Gourmet Bites . We simulated 100,000 Monte Carlo simulations under the assumption that the null hypothesis is true, resulting in a p-value of 0.0001. Due to this very small p-value (0.0001 \< 0.05), we reject the null hypothesis, and there is a small likelihood of the deviations occurring by chance. There is convincing evidence that Gourmet Bites’ rate of health code violations is significantly higher than the citywide average of 3%, so the Health Department can take action.
+
+## Problem 3 - Evaluating Jury Selection for Bias
+
+```{r}
+expected_prop <- c(`Group 1` = 0.30,`Group 2` = 0.25, `Group 3` = 0.20, `Group 4` =
+                     0.15, `Group 5` = 0.10)
+observed_counts <- c(`Group 1` = 85,`Group 2` = 56, `Group 3` = 59, `Group 4` = 27,
+                     `Group 5` = 13)
+
+chi_squared_statistic <- function(observed, expected) {
+  sum((observed - expected)^2 / expected)
+}
+
+chi_sim <- do(100000)*{
+  sim_counts <- rmultinom(1, 240, expected_prop)
+  this_chi <- chi_squared_statistic(sim_counts, 240*expected_prop)
+  c(chi = this_chi)
+}
+
+ggplot(chi_sim) + 
+  geom_histogram(aes(x=chi), fill = 'green4', color = 'black') +
+  labs(
+    title = "Chi-Squared Statistic Distribution",
+    x = "Chi-Squared Statistic",
+    y = "Frequency"
+  )
+
+my_chi <- chi_squared_statistic(observed_counts, 240*expected_prop)
+pvalue3 <- sum(chi_sim >= my_chi) / 100000
+```
+
+The null hypothesis we are testing is that the racial/ethnic distribution of jurors empaneled by this judge matches the expected county population proportions. I used the chi-squared statistic to test this hypothesis, resulting in the chi-squared statistic being approximately 12.426. Our p-value is 0.014. Due to this very small p-value (0.014 \< 0.05), we reject the null hypothesis. There is convincing evidence that the observed racial/ethnic distribution of juror differs significantly from the expected proportions. This may suggest racial bias, but there are other explanations for this variation in proportions. Some people are automatically exempted or excused from jury service, such as county residents with certain disabilities, prior felony convicts, non-citizens, and individuals in hardship situations.
+
+## Problem 4 - LLM Watermarking
+
+### a)
+
+```{r}
+letter_freq <- read.csv("letter_frequencies.csv")
+brown_sentences <- readLines("brown_sentences.txt")
+
+count_letters <- function(sentence) {
+  clean_sentence <- gsub("[^A-Za-z]", "", sentence)
+  clean_sentence <- toupper(clean_sentence)
+  letter_counts <- table(factor(strsplit(clean_sentence, "")[[1]], levels = LETTERS))
+}
+
+calculate_chi_squared <- function(sentence, freq_table) {
+  observed <- count_letters(sentence)
+  total_letters <- sum(observed)
+  expected <- total_letters * freq_table$Probability
+  chi_squared_stat <- sum((observed - expected)^2 / expected)
+  return(chi_squared_stat)
+}
+
+chi_squared_values <- sapply(brown_sentences, function(sentence) {
+  calculate_chi_squared(sentence, letter_freq)
+})
+chi_squared_df <- data.frame(chi_sq = chi_squared_values)
+
+ggplot(chi_squared_df) +
+  geom_histogram(aes(x = chi_sq), fill = "purple", color = 'black') +
+  labs(title = "Chi-Squared Distribution",
+       x = "Chi-Squared Statistic",
+       y = "Frequency")
+```
+
+This distribution represents the range of chi-squared values expected in normal English sentences based on the predefined letter frequency distribution.
+
+### b)
+
+```{r}
+given_sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+chi_squared_given <- sapply(given_sentences, function(sentence) {
+  calculate_chi_squared(sentence, letter_freq)
+})
+
+p_values <- sapply(chi_squared_given, function(chi) {
+  mean(chi_squared_values >= chi)
+})
+
+sentences_table <- tibble(Sentence = given_sentences, P_Value = round(p_values, 3))
+```
+
+| Sentence                                                                                                                                                                                                      | P-Value |
+|------------------------------------------------------------|------------|
+| 1\. She opened the book and started to read the first chapter, eagerly anticipating what might come next.                                                                                                     | 0.513   |
+| 2\. Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.                                                                           | 0.926   |
+| 3\. The museum’s new exhibit features ancient artifacts from various civilizations around the world.                                                                                                          | 0.076   |
+| 4\. He carefully examined the document, looking for any clues that might help solve the mystery.                                                                                                              | 0.489   |
+| 5\. The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.                                                                                                               | 0.484   |
+| 6\. Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland. | 0.009   |
+| 7\. The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.                                                | 0.328   |
+| 8\. They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.                                                                                                          | 0.988   |
+| 9\. The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.                                                                                   | 0.084   |
+| 10\. Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations.                           | 0.059   |
+
+The null hypothesis we are testing for each sentence is that the sentence follows the “typical” English letter distribution. As shown in the table, only one sentence resulted in a p-value of less than 0.05, which is sentence 6 with a p-value of 0.009. Due to this small p-value (0.009 \< 0.05), we reject the null hypothesis for sentence 6. There is convincing evidence that sentence 6 does not follow the "typical" English letter distribution, so this must be the sentence written and watermarked by an LLM.
