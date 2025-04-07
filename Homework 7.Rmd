@@ -1,0 +1,136 @@
+---
+title: "Homework 7"
+author: "Iman Malik"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE, 
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.align = "center")
+```
+
+```{r}
+# Libraries
+library(ggplot2)
+library(tidyverse)
+library(mosaic)
+library(MatchIt)
+```
+
+UT EID: im22856
+
+GitHub repo: <https://github.com/imanmalik16/SDS-315.git>
+
+## Problem 1 - Armfolding
+
+### a)
+
+```{r}
+armfold <- read.csv("armfold.csv")
+
+armfold |>
+  group_by(Sex) |>
+  summarize(count = n())
+
+armfold |>
+  group_by(Sex) |>
+  summarize(prop_LonR_fold = round(prop(LonR_fold), 3))
+```
+
+There are 111 females and 106 males in this dataset. Approximately 47.2% of males and 42.3% of females folded their left arm on top.
+
+### b)
+
+The observed difference in proportions between males who folded their left arm on top and females who folded their left arm on top is approximately 4.9%.
+
+### c)
+
+```{r}
+prop.test(Sex ~ LonR_fold, data = armfold, success = 1)
+```
+
+The formula for the standard error for the difference in proportions is sqrt((p \* (1-p1)/n1) + (p2 \* (1-p2)/n2)). p1 = 0.472, p2 = 0.423, n1 = 106, n2 = 111. The z\* value I used was 1.96 for 95% confidence. The standard error I calculated is approximately 0.067.
+
+### d)
+
+If we were to repeat this study many times, then we would expect that 95% of those calculated confidence intervals would contain the true difference in proportions of left-on-right arm folding between males and females. If we were to estimate the true difference in proportions, it would fall between -0.084 and 0.180, with 95% confidence.
+
+### e)
+
+The standard error calculated above represents the typical variation we would expect to see in our sampling distribution of the difference in proportions. It measures how much the observed difference of proportions between the two groups may vary from one sample to another by chance.
+
+### f)
+
+In this context, the sampling distribution refers to the distribution of the difference in sample proportions (left-on-right arm folding) between males and females that we expect to see under repeated sampling. The sample proportion varies from sample to sample, while the samples sizes of males and females stays fixed.
+
+### g)
+
+The Central Limit Theorem justifies using a normal distribution here because of the large sample size. Under samples that are large enough, the distribution of differences in sample proportions approaches a normal distribution.
+
+### h)
+
+Since the confidence interval contains 0, the result is not statistically significant at the 5% level. Therefore, we do not have convincing evidence that there is no difference in arm-folding behavior between males and females. We do not have enough evidence to rule out the possibility that there is no difference.
+
+### i)
+
+The confidence interval **would** change across samples due to random sampling variation if we repeated this experiment many times. However, due to the coverage principle, we would expect that 95% of those intervals would contain the true population difference in proportions between male and female left-on-right arm folding.
+
+## Problem 2 - Get out the vote
+
+### a)
+
+```{r}
+turnout <- read.csv("turnout.csv")
+
+turnout |>
+  group_by(GOTV_call) |>
+  summarize(prop_GOTV_call = prop(voted1998))
+
+prop.test(voted1998 ~ GOTV_call, data = turnout, success = 1)
+```
+
+The sample proportion of those receiving a GOTV call who voted in 1998 is approximately 64.8%. The sample proportion of those not receiving a GOTV call who voted in 1998 is approximately 44.4%. We are 95% confident that the true difference in proportions of voting in 1998 for those who received a GOTV call versus those who didn't is between 0.143 and 0.264. This interval does not contain 0, therefore the result is statistically significant at the 5% level. We have convincing evidence that those received GOTV calls are more likely to have voted in 1998.
+
+### b)
+
+```{r}
+turnout |>
+  group_by(GOTV_call) |>
+  summarize(prop_voted1996 = mean(voted1996))
+
+turnout |>
+  group_by(GOTV_call) |>
+  summarize(mean_age = mean(AGE))
+
+turnout |>
+  group_by(GOTV_call) |>
+  summarize(prop_majorpty = mean(MAJORPTY))
+```
+```{r}
+# confidence intervals
+prop.test(voted1996 ~ GOTV_call, data = turnout, success = 1)
+t.test(AGE ~ GOTV_call, data = turnout)
+prop.test(MAJORPTY ~ GOTV_call, data = turnout, success = 1)
+```
+
+The voted1996, AGE, and MAJORPTY variables are all confounding variables. As shown in the tables above, those who received a GOTV call had a larger sample proportion of 1996 voters, a higher mean age, and had a larger sample proportion of voters registered as a member of either one of the two major U.S. political parties than those who did not receive a GOTV call.
+
+### c)
+
+```{r}
+turnout_match = matchit(GOTV_call ~ AGE + MAJORPTY + voted1996, data = turnout, ratio=5)
+turnout_matched = match.data(turnout_match)
+
+turnout_matched |>
+  group_by(GOTV_call) |>
+  summarize(prop_GOTV_call = prop(voted1998))
+
+prop(voted1998 ~ GOTV_call, data = turnout_matched)
+prop.test(voted1998 ~ GOTV_call, data = turnout_matched, success = 1)
+```
+
+The matched data shows that the proportion of those receiving a GOTV call who voted in 1998 is approximately 64.8%, and the proportion of those not receiving a GOTV call who voted in 1998 is 56.9%. We are 95% confident that the true difference in proportions of voting in 1998 for those who received a GOTV call versus those who didn't is between 0.011 and 0.146. This interval does not contain 0, therefore the result is statistically significant at the 5% level. We have convincing evidence that those received GOTV calls are more likely to have voted in 1998.
