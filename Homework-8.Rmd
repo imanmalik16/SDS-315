@@ -1,0 +1,92 @@
+---
+title: "Homework 8"
+author: "Iman Malik"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE,
+                      warning = FALSE,
+                      message = FALSE,
+                      fig.align = "center")
+```
+
+```{r}
+# Libraries & Datasets
+library(ggplot2)
+library(tidyverse)
+library(mosaic)
+library(MatchIt)
+
+creatine <- read.csv("creatinine.csv")
+covid <- read.csv("covid.csv")
+milk <- read.csv("milk.csv")
+```
+
+UT EID: im22856
+
+GitHub repo: <https://github.com/imanmalik16/SDS-315.git>
+
+## Problem 1: Regression warm-up
+
+```{r}
+lm_creatine = lm(creatclear ~ age, data = creatine)
+coef(lm_creatine)
+```
+
+a)  The expected creatinine clearance rate for a 55-year-old is 113.7 mL/minute. To determine this, I took the baseline in my fitted model (approx. 147.8) and added 55 \* -0.62 (the age \* rate of change) to it. 147.8 + (55\*-0.62) = 113.7.
+
+b)  The rate of creatinine clearance changes by about -0.62 mL/minute per year. So as a person ages one year, their creatinine clearance decreases by 0.62 mL/minute.
+
+c)  A 40-year-old with a creatinine clearance rate of 135 has a healthier rate than a 60-year-old with a rate of 112. The expected rate (calculated the same as part a) for a 40-year-old is 123 (12 mL/minute lower than observed), while the expected rate for a 60-year-old is 110.6 (1.38 mL/minute lower than observed). Therefore, since the 40-year-old has a much higher residual compared to the 60-year-old, the 40-year-old has a healthier creatinine clearance rate.
+
+## Problem 2: Modeling disease growth
+
+### a) Italy
+
+```{r}
+covid_italy <- covid |>
+  filter(country == "Italy")
+
+boot_growth_italy <- do(10000) * (lm(log(deaths) ~ days_since_first_death, data = resample(covid_italy)))
+confint(boot_growth_italy, level = 0.95)
+```
+
+Using a bootstrapped confidence interval with a fitted exponential growth model, we are 95% confident that the true growth rate of COVID-19 deaths in Italy is between 0.159 and 0.207 and that the true doubling time for Italy is between 335.9 and 440.4 days. 
+
+### b) Spain
+
+```{r}
+covid_spain <- covid |>
+  filter(country == "Spain")
+
+boot_growth_spain <- do(10000) * (lm(log(deaths) ~ days_since_first_death, data = resample(covid_spain)))
+confint(boot_growth_spain, level = 0.95)
+```
+
+Using a bootstrapped confidence interval with a fitted exponential growth model, we are 95% confident that the true growth rate of COVID-19 deaths in Spain is between 0.235 and 0.317 and that the true doubling time for Spain is between 220.7 and 297.8 days. 
+
+### c) Line Graph
+
+```{r}
+ggplot(covid) + geom_line(aes(x = days_since_first_death, y = deaths, color = country)) +
+  labs(
+    x = "Days Since First Death",
+    y = "Reported Daily Deaths",
+    color = "Country",
+    title = "Reported Daily COVID-19 Deaths over Days Since First Death")
+```
+
+## Problem 3: Price Elasticity of Demand
+
+```{r}
+lm_milk = lm(log(sales) ~ log(price), data = milk)
+coef(lm_milk)
+
+boot_milk <- do(10000) * (lm(log(sales) ~ log(price), data = resample(milk)))
+confint(boot_milk, level = 0.95)
+```
+
+The estimated price elasticity of demand for milk using the power law model is approximately -1.62. In light of the data, when milk prices increase by 1%, consumer demand goes down by about 1.62%, on average. We are 95% confident that the true price elasticity of demand for milk is between -1.77 and -1.45. To get this estimate, I created a 95% confidence interval using 10,000 bootstrapped samples from the milk data set with the power law model for a log-log scale, where the fitted slope of each regression model represents the elasticity.
